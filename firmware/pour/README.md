@@ -28,7 +28,7 @@ The servo needs its own supply and a ground shared with the board. Details and t
 | `d20` / `x` | repeat pours for 20 s (max 60) / stop after the current pour |
 | `j` | servo signal jitter since the last check |
 
-Defaults are at the top of [`pour.ino`](pour.ino): REST 180°, POUR 60°, hold 1500 ms. Runtime changes are kept in RAM and revert on reset, so write your final numbers into the sketch.
+Defaults are at the top of [`pour.ino`](pour.ino): REST 180°, POUR 75°, hold 1500 ms. Runtime changes are kept in RAM and revert on reset, so write your final numbers into the sketch.
 
 **Finding your angles:** nudge with `n` until the bottle is level, then `z`. Set the pour angle with `t`, try `p`, adjust.
 

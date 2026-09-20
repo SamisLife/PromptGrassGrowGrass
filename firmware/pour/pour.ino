@@ -32,7 +32,7 @@ const int PIN_SERVO = 9;
 // Adjustable at runtime (console or Bridge). Runtime changes live in RAM: after a reset
 // these defaults apply again, so put your final numbers here.
 int restDeg = 180;            // bottle level and stable
-int pourDeg = 60;             // bottle tipped (here: a 120 degree tilt)
+int pourDeg = 75;             // bottle tipped (here: a 105 degree tilt)
 int holdMs  = 1500;           // time held at the pour angle
 
 // Self-test: pour repeatedly for this many seconds at every power-on, BEFORE waiting for
