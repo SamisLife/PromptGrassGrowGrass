@@ -189,7 +189,8 @@ export class SoilApp {
         seconds: ((s.t1 as number) - (s.t0 as number)) / 1000,
         between: [s.source, s.target], measuredAt: Date.now(), estimate: true,
       };
-      persist.profile.save(this.profile);
+      persist.profile.save(this.profile);                       // survives restarts; used by crop scores until replaced
+      persist.appendJsonl('soil-profiles.jsonl', this.profile);   // every measurement is kept, never overwritten
       this.bus.emitEvent({ type: 'profile', profile: this.profile, mode: this.mode });
     }
     this.bus.emitEvent({ type: 'pour', pour: s, mode: this.mode });
@@ -345,12 +346,21 @@ export class SoilApp {
     this.bus.emitEvent({ type: 'pour', pour: this.detector.state, mode: this.mode });
   }
 
+  /**
+   * Cancel / re-arm the pour TEST. This never touches the saved soil profile: cancelling a new
+   * attempt must not destroy the last good measurement. The profile is replaced only when a new
+   * test completes (onPourChanged), or removed on purpose with clearSoilProfile().
+   */
   resetPour(): void {
     this.detector.reset();
+    this.bus.emitEvent({ type: 'pour', pour: this.detector.state, mode: this.mode });
+  }
+
+  /** Forget the measured soil profile, e.g. the probes moved to a different container of soil. */
+  clearSoilProfile(): void {
     this.profile = null;
     persist.profile.save(null);
     this.bus.emitEvent({ type: 'profile', profile: null, mode: this.mode });
-    this.bus.emitEvent({ type: 'pour', pour: this.detector.state, mode: this.mode });
   }
 
   async pourWater(opts: { holdMs?: number; force?: boolean; caller: PourCaller }): Promise<{

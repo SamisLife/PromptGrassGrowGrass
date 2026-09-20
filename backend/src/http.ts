@@ -133,7 +133,12 @@ export function listenHttp(app: SoilApp): Promise<import('node:http').Server> {
       if (path === '/api/agent/connect-info') return json(res, 200, wrap(app, app.connectInfo()));
       if (path === '/api/connectivity') return json(res, 200, wrap(app, { connectivity: await app.connectivity() }));
       if (path === '/api/config' && method === 'GET') return json(res, 200, wrap(app, { config: app.config }));
-      if (path === '/api/soil-profile') return json(res, 200, wrap(app, { profile: await app.soilProfile() }));
+      if (path === '/api/soil-profile' && method === 'GET') return json(res, 200, wrap(app, { profile: await app.soilProfile() }));
+      // Deliberately forget the measurement (new soil). Resetting the pour test does NOT do this.
+      if ((path === '/api/soil-profile' && method === 'DELETE') || (path === '/api/soil-profile/clear' && method === 'POST')) {
+        app.clearSoilProfile();
+        return json(res, 200, wrap(app, { profile: null }));
+      }
       if (path === '/api/forecast') return json(res, 200, wrap(app, { forecast: await app.forecast() }));
       if (path === '/api/frost-dates') return json(res, 200, wrap(app, { frost: await app.frostDates() }));
       if (path === '/api/notes' && method === 'GET') return json(res, 200, wrap(app, { notes: app.notes }));

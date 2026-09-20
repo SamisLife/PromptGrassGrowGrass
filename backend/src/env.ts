@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const BACKEND_ROOT = join(here, '..');
-export const DATA_DIR = join(BACKEND_ROOT, 'data');
+/** Where config, history, notes and soil profiles are kept. Overridable so tests never touch real data. */
+export const DATA_DIR = process.env.PROMPTGRASS_DATA_DIR?.trim() || join(BACKEND_ROOT, 'data');
 
 /** Parse one env file. Missing file or bad syntax is not fatal. */
 function readEnvFile(path: string): Record<string, string> {
