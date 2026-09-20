@@ -5,11 +5,25 @@ import { env } from './env.js';
 import { mcpHttpHandler } from './mcp.js';
 import type { PourCaller, ProbeId, Zone, ZoneId } from './types.js';
 
+/**
+ * A page served from THIS machine, on any port. Dev servers hop ports (5173, 5174, ...),
+ * and an allow-list of exact ports silently breaks the app when that happens. Pages from
+ * anywhere else on the web get no CORS grant, so a browser will not let them read data.
+ */
+function isLocalOrigin(origin: string): boolean {
+  try {
+    const u = new URL(origin);
+    return (u.protocol === 'http:' || u.protocol === 'https:') && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function corsHeaders(req: IncomingMessage): Record<string, string> {
   const origin = String(req.headers.origin ?? '');
-  const allowed = origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173' || origin === 'http://localhost:4173' || origin === 'http://127.0.0.1:4173';
   return {
-    'Access-Control-Allow-Origin': allowed ? origin : 'http://localhost:5173',
+    ...(isLocalOrigin(origin) ? { 'Access-Control-Allow-Origin': origin } : {}),
+    Vary: 'Origin',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, mcp-session-id, mcp-protocol-version',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,OPTIONS,DELETE',
     'Access-Control-Expose-Headers': 'mcp-session-id, mcp-protocol-version',
@@ -17,7 +31,7 @@ function corsHeaders(req: IncomingMessage): Record<string, string> {
 }
 
 function json(res: ServerResponse, code: number, body: unknown, req?: IncomingMessage): void {
-  res.writeHead(code, { 'Content-Type': 'application/json', ...corsHeaders(req ?? { headers: {} } as IncomingMessage) });
+  res.writeHead(code, { 'Content-Type': 'application/json', ...(req ? corsHeaders(req) : {}) });
   res.end(JSON.stringify(body));
 }
 
@@ -43,10 +57,9 @@ function wrap(app: SoilApp, extra: Record<string, unknown> = {}) {
  * needed for a body-less POST). Requests with no Origin (curl, MCP clients, server code)
  * are unaffected.
  */
-const POUR_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://127.0.0.1:4173']);
 function pourOriginOk(req: IncomingMessage): boolean {
   const origin = String(req.headers.origin ?? '');
-  return !origin || POUR_ORIGINS.has(origin);
+  return !origin || isLocalOrigin(origin);
 }
 
 function pourAuth(req: IncomingMessage, cfg: ReturnType<typeof env>): boolean {
@@ -70,6 +83,8 @@ export function listenHttp(app: SoilApp): Promise<import('node:http').Server> {
 
   const server = createServer(async (req, res) => {
     try {
+      // Set once, for every reply on this request (many handlers call json() without `req`).
+      for (const [k, v] of Object.entries(corsHeaders(req))) res.setHeader(k, v);
       if (req.method === 'OPTIONS') {
         res.writeHead(204, corsHeaders(req));
         return res.end();
@@ -83,7 +98,7 @@ export function listenHttp(app: SoilApp): Promise<import('node:http').Server> {
         // Host check blocks DNS rebinding. Origin is not checked: MCP clients
         // (ChatGPT, Inspector, Claude) often send a non-localhost Origin or none.
         if (cfg.loopback && !validateHost(req, res)) return;
-        res.setHeader('Access-Control-Allow-Origin', corsHeaders(req)['Access-Control-Allow-Origin']);
+        { const o = corsHeaders(req)['Access-Control-Allow-Origin']; if (o) res.setHeader('Access-Control-Allow-Origin', o); }
         res.setHeader('Access-Control-Allow-Headers', corsHeaders(req)['Access-Control-Allow-Headers']);
         await mcp(req, res);
         return;

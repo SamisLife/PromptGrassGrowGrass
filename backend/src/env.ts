@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -6,26 +7,34 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const BACKEND_ROOT = join(here, '..');
 export const DATA_DIR = join(BACKEND_ROOT, 'data');
 
-function loadEnvFile(path: string): void {
-  if (!existsSync(path)) return;
+/** Parse one env file. Missing file or bad syntax is not fatal. */
+function readEnvFile(path: string): Record<string, string> {
+  if (!existsSync(path)) return {};
   try {
-    process.loadEnvFile(path);
+    return parseEnv(readFileSync(path, 'utf8')) as Record<string, string>;
   } catch (e) {
     console.error(`could not read ${path}:`, (e as Error).message);
+    return {};
   }
 }
 
-/** Load backend/.env, then web/.env for serials the team already set. Existing keys win. */
+/**
+ * Load backend/.env, then web/.env (where the team first put the board serials).
+ *
+ * An EMPTY value means "not set". This matters: `cp .env.example .env` leaves lines like
+ * `POUR_BOARD_SERIAL=` behind. If those counted as set they would mask the real serials
+ * in web/.env, the backend would fall back to guessing which sensor board is which, and
+ * zone A and zone B could be swapped without anyone noticing.
+ * Precedence: real environment > backend/.env > web/.env, first NON-EMPTY value wins.
+ */
 export function loadEnv(): void {
-  loadEnvFile(join(BACKEND_ROOT, '.env'));
-  const webEnv = join(BACKEND_ROOT, '..', 'web', '.env');
-  if (existsSync(webEnv)) {
-    const had = new Set(Object.keys(process.env));
-    const snapshot = { ...process.env };
-    loadEnvFile(webEnv);
-    for (const [k, v] of Object.entries(process.env)) {
-      if (!had.has(k)) continue;
-      if (snapshot[k] !== undefined && snapshot[k] !== v) process.env[k] = snapshot[k];
+  const files = [join(BACKEND_ROOT, '.env'), join(BACKEND_ROOT, '..', 'web', '.env')];
+  for (const file of files) {
+    for (const [k, v] of Object.entries(readEnvFile(file))) {
+      const value = (v ?? '').trim();
+      if (!value) continue;
+      if ((process.env[k] ?? '').trim()) continue;
+      process.env[k] = value;
     }
   }
 }
