@@ -1,0 +1,10 @@
+node_modules
+.DS_Store
+
+# local configuration (board serial numbers, etc.)
+.env
+.env.*
+!.env.example
+
+# Frontend build output
+dist/
