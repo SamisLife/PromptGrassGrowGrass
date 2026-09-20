@@ -63,7 +63,7 @@ export function env() {
     sensorASerial: str('SENSOR_A_BOARD_SERIAL'),
     sensorBSerial: str('SENSOR_B_BOARD_SERIAL'),
     boardPort: str('BOARD_PORT'),
-    pourMaxPerWindow: num('POUR_MAX_PER_WINDOW', 8),
+    pourMaxPerWindow: num('POUR_MAX_PER_WINDOW', 0),                 // 0 = no limit
     pourWindowMs: num('POUR_WINDOW_MS', 10 * 60 * 1000),
     pourWetPct: num('POUR_WET_PCT', 78),
     publicBase: `http://${host === '::1' ? '[::1]' : host}:${port}`,

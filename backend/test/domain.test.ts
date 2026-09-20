@@ -76,6 +76,14 @@ test('pour guards: wet zone A is refused unless force=true', () => {
   assert.equal(yes.ok, true);
 });
 
+test('pour guards: no pour limit by default; a limit only when one is configured', () => {
+  const free = new PourGuards(defaultGuardConfig());
+  for (let i = 0; i < 50; i++) { assert.equal(free.check({ now: 1000 + i, zoneA: null, force: false, boardOnline: true }).ok, true); free.recordAccepted(1000 + i); }
+  const capped = new PourGuards(defaultGuardConfig({ maxPerWindow: 1, windowMs: 60_000 }));
+  capped.recordAccepted(1000);
+  assert.equal(capped.check({ now: 2000, zoneA: null, force: false, boardOnline: true }).ok, false);
+});
+
 test('pour guards: rolling window', () => {
   const g = new PourGuards(defaultGuardConfig({ maxPerWindow: 2, windowMs: 60_000 }));
   const dry = live(15);

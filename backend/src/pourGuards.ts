@@ -2,6 +2,7 @@ import { MOISTURE } from './advice.js';
 import type { PourCaller, PourGuardKind, PourResult, SoftGuardKind, ZoneLive } from './types.js';
 
 export interface PourGuardConfig {
+  /** most pours accepted per rolling window; 0 = no limit (the default) */
   maxPerWindow: number;
   windowMs: number;
   wetPct: number;
@@ -36,7 +37,9 @@ export class PourGuards {
       return { ok: false, result: 'offline', reason: 'No board running the pour firmware is connected.', guard: 'hard' };
     }
     this.accepted = this.accepted.filter((t) => now - t < this.cfg.windowMs);
-    if (this.accepted.length >= this.cfg.maxPerWindow) {
+    // Off unless POUR_MAX_PER_WINDOW is set: on a demo table people pour again and again, and the firmware
+    // already allows only one pour at a time.
+    if (this.cfg.maxPerWindow > 0 && this.accepted.length >= this.cfg.maxPerWindow) {
       const oldest = this.accepted[0];
       const waitS = Math.ceil((this.cfg.windowMs - (now - oldest)) / 1000);
       return {
@@ -72,7 +75,7 @@ export class PourGuards {
 }
 
 export const defaultGuardConfig = (over: Partial<PourGuardConfig> = {}): PourGuardConfig => ({
-  maxPerWindow: 8,
+  maxPerWindow: 0,
   windowMs: 10 * 60 * 1000,
   wetPct: MOISTURE.wet,
   ...over,
