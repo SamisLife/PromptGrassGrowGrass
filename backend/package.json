@@ -14,11 +14,13 @@
     "typecheck": "tsc --noEmit",
     "scan": "tsx src/index.ts --scan",
     "hardware-smoke": "tsx scripts/hardware-smoke.ts",
-    "voice-smoke": "tsx scripts/voice-smoke.ts"
+    "voice-smoke": "tsx scripts/voice-smoke.ts",
+    "build-region": "tsx scripts/build-region.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
+    "geotiff": "^3.0.5",
     "ws": "^8.21.3",
     "zod": "^4.1.5"
   },

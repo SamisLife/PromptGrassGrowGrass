@@ -6,7 +6,7 @@ import type {
   PourCaller, SoftGuardKind, UiCommand, UiDrawer, UiLens, UiView, ZoneId, ZoneLive,
 } from './types.js';
 
-const VIEWS: readonly UiView[] = ['field', 'pour', 'history', 'network'];
+const VIEWS: readonly UiView[] = ['field', 'pour', 'history', 'network', 'region'];
 const DRAWERS: readonly UiDrawer[] = ['soil', 'plant', 'when', 'water', 'diagnose', 'none'];
 const LENSES: readonly UiLens[] = ['natural', 'moisture', 'temperature'];
 const ZONE_IDS: readonly ZoneId[] = ['A', 'B'];
@@ -15,7 +15,7 @@ const round = (x: number | null | undefined, d = 1) => (x == null ? null : Math.
 
 export const PLOT_TOOL_NAMES = [
   'list_zones', 'read_zone', 'get_soil_profile', 'score_crops', 'get_planting_window',
-  'get_forecast', 'get_history', 'add_note', 'get_readings', 'pour_water', 'get_pour_status',
+  'get_forecast', 'get_history', 'add_note', 'get_readings', 'pour_water', 'get_pour_status', 'find_complementary_farms',
 ] as const;
 
 export const VOICE_ONLY_TOOLS = ['navigate'] as const;
@@ -251,6 +251,47 @@ async function runPlotToolFull(
           payload: { mode: app.mode, saved: true, id: n.id, zone: n.zoneId, text: n.text },
         };
       }
+      case 'find_complementary_farms': {
+        const r = await app.regionMatches();
+        const n = Math.max(1, Math.min(8, Number(args.limit) || 5));
+        const focus = args.farm != null ? r.matches.find((m) => m.fieldId === String(args.farm) || m.identity.farm.toLowerCase() === String(args.farm).toLowerCase()) : undefined;
+        // The page answers with the agent: the camera rises over the land and the matches light up.
+        app.showRegion(focus?.fieldId);
+        const summary = r.status !== 'ready' ? `Neighbouring farms: ${r.status}` : !r.you.measured ? 'Neighbouring farms: soil not measured yet' : `Found ${r.matches.length} complementary farms`;
+        app.recordAgentCall('find_complementary_farms', allZones(), summary);
+        if (r.status !== 'ready') {
+          return { ok: true, zones: allZones(), summary, payload: { mode: app.mode, status: r.status, matches: [], why_empty: r.reason ?? (r.status === 'no_place' ? 'No location is set for this plot, so there is no region to look at.' : 'The land around this place is still loading. Ask again in a few seconds.') } };
+        }
+        if (!r.you.measured) {
+          return { ok: true, zones: allZones(), summary, payload: { mode: app.mode, status: 'ready', matches: [], why_empty: "This plot's drainage has not been measured, so there is nothing honest to compare. Run the pour test first." } };
+        }
+        return {
+          ok: true, zones: allZones(), summary,
+          payload: {
+            mode: app.mode, status: 'ready', your_soil: r.you.label,
+            matches: (focus ? [focus] : r.matches.slice(0, n)).map((m) => ({
+              farm_id: m.fieldId, farm: m.identity.farm, contact_first_name: m.identity.person, match_score: m.score,
+              distance_km: m.distanceKm, direction: m.bearing,
+              they_grow: m.theyGrow,
+              you_could_grow_they_cannot: m.youNotThey.slice(0, 4).map((g) => g.name), because_yours: m.youWhy,
+              they_could_grow_you_cannot: m.theyNotYou.slice(0, 4).map((g) => g.name), because_theirs: m.theyWhy,
+              already_growing_what_you_cannot: m.proven,
+              their_soil: `${m.soil.series}${m.soil.texture ? ' ' + m.soil.texture.toLowerCase() : ''}${m.soil.drainagecl ? ', ' + m.soil.drainagecl.toLowerCase() : ''}`,
+              in_one_sentence: m.sentence,
+              ...(focus ? { first_message_draft: m.draft } : {}),
+            })),
+            crops_your_soil_suits_that_nobody_nearby_grows: r.unserved.slice(0, 6).map((c) => c.name),
+            honesty: {
+              crops: `looked up: ${r.sources?.[0]?.name ?? 'USDA Cropland Data Layer'}`,
+              their_soil: 'looked up: USDA SSURGO soil survey; their drainage class is an estimate mapped from it',
+              your_soil: 'measured by the pour test',
+              scores: "calculated by the app's crop rules, soil factors only",
+              people: 'ILLUSTRATIVE. The farm names and first names are made up for this demo: the cropland map knows crops, not owners. Say so if you name one. Nothing is sent to anyone.',
+            },
+            to_draft_a_message: 'Call this tool again with farm set to a farm_id to get a first-message draft for that farm.',
+          },
+        };
+      }
       case 'get_readings': {
         app.recordAgentCall('get_readings', allZones(), 'Read all zones');
         return { ok: true, zones: allZones(), summary: 'Read all zones', payload: await app.readings() };
@@ -371,8 +412,8 @@ function packPour(
 }
 
 export function parseNavigateArgs(args: Record<string, unknown>): { ok: true; command: UiCommand } | { ok: false; error: string } {
-  const extra = Object.keys(args).filter((k) => !['view', 'drawer', 'zone', 'lens', 'crop'].includes(k));
-  if (extra.length) return { ok: false, error: `Unknown navigate field(s): ${extra.join(', ')}. Allowed: view, drawer, zone, lens, crop.` };
+  const extra = Object.keys(args).filter((k) => !['view', 'drawer', 'zone', 'lens', 'crop', 'farm'].includes(k));
+  if (extra.length) return { ok: false, error: `Unknown navigate field(s): ${extra.join(', ')}. Allowed: view, drawer, zone, lens, crop, farm.` };
   const command: UiCommand = {};
   if (args.view != null) {
     const v = String(args.view);
@@ -400,7 +441,13 @@ export function parseNavigateArgs(args: Record<string, unknown>): { ok: true; co
     if (!crop) return { ok: false, error: `Unknown crop "${v}". Use an id from score_crops (e.g. carrot, tomato, lettuce).` };
     command.crop = crop.id;
   }
-  if (!Object.keys(command).length) return { ok: false, error: 'navigate needs at least one of view, drawer, zone, lens, crop.' };
+  if (args.farm != null) {
+    const v = String(args.farm);
+    if (!/^f\d+$/.test(v)) return { ok: false, error: `Unknown farm "${v}". Use a farm_id from find_complementary_farms (e.g. f12).` };
+    command.farm = v;
+    command.view = 'region';
+  }
+  if (!Object.keys(command).length) return { ok: false, error: 'navigate needs at least one of view, drawer, zone, lens, crop, farm.' };
   return { ok: true, command };
 }
 

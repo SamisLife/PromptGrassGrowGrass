@@ -13,6 +13,9 @@ import { judgePour, type PourOutcome } from './plain.js';
 import { PourDetector } from './pourDetector.js';
 import { defaultGuardConfig, PourGuards, type PourRequestLog } from './pourGuards.js';
 import { plantingWindow } from './season.js';
+import { RegionService, findMatches, unservedCrops, type Match, type Region, type YourSoil } from './region/index.js';
+import { FARMED_SHARE } from './region/build.js';
+import { CAN, CANNOT } from './region/match.js';
 import type {
   AgentCall, BoardConfig, Connectivity, CropScore, DetectedBoard, Diagnosis, Forecast, FrostDates, HistorySeries,
   Mode, Note, Overrides, Place, PlantingWindow, Plot, PourActuatorStatus, PourCaller, PourGuardKind, PourResult, ProbeId,
@@ -45,6 +48,7 @@ export class SoilApp {
   private cfg: Env;
   private implausible = new Map<ZoneId, boolean>();
   private startedAt = Date.now();
+  readonly regions = new RegionService();
 
   constructor(cfg?: Env) {
     this.cfg = cfg ?? env();
@@ -62,6 +66,10 @@ export class SoilApp {
 
   async start(): Promise<void> {
     ensureDataDir();
+    // The land around the plot: loaded once per place, from disk when we have it. Never from the constructor,
+    // so building a SoilApp (tests) cannot reach the network.
+    this.regions.onChange = () => this.bus.emitEvent({ type: 'region', status: this.regions.status, mode: this.mode });
+    this.regions.ensure(this.config.place);
     if (this.cfg.hardwareOff) {
       this.missing = ['pour board (servo / water bottle)', 'sensor board A', 'sensor board B'];
       console.log(new Date().toLocaleTimeString(), 'HARDWARE=off: not opening consoles. Every probe stays offline; nothing is simulated.');
@@ -310,7 +318,50 @@ export class SoilApp {
     this.config = { ...this.config, zones: this.config.zones.map((z) => (z.id === this.zone(id).id ? { ...z, ...patch } : z)) };
     this.emitConfig();
   }
-  setPlace(place: Place | null): void { this.config = { ...this.config, place }; this.emitConfig(); }
+  setPlace(place: Place | null): void {
+    this.config = { ...this.config, place };
+    this.emitConfig();
+    this.regions.ensure(place);          // so the zoom-out is ready before anyone scrolls
+  }
+
+  // ---------------------------------------------------------------- the land around the plot
+  /** This plot's soil as the matcher needs it, or null while drainage has not been measured. */
+  private yourSoil(): YourSoil | null {
+    if (!this.profile) return null;
+    const ph = this.config.zones.find((z) => z.ph != null)?.ph ?? null;
+    return { drainageClass: this.profile.drainageClass, ph, label: this.profile.label, texture: this.profile.texture, plotName: this.config.plot.name };
+  }
+
+  regionView(): {
+    status: RegionService['status']; reason: string | null; region: Region | null; matches: Match[];
+    you: { measured: boolean; drainageClass: string | null; label: string | null; ph: number | null };
+    unserved: { id: string; name: string; score: number }[]; method: Record<string, unknown>;
+  } {
+    const region = this.regions.region, you = this.yourSoil();
+    return {
+      status: this.regions.status, reason: this.regions.reason, region,
+      matches: region && you ? findMatches(region, you) : [],
+      unserved: region && you ? unservedCrops(region, you) : [],
+      you: { measured: !!you, drainageClass: you?.drainageClass ?? null, label: you?.label ?? null, ph: you?.ph ?? null },
+      method: {
+        compares: 'soil only (drainage and pH); the two plots share one climate',
+        can_grow_at_or_above: CAN, cannot_grow_at_or_below: CANNOT, farmed_cell_share: FARMED_SHARE,
+        your_drainage: 'measured by the pour test', their_drainage: 'estimated: SSURGO natural drainage class mapped onto our four classes',
+        fields: 'blocks of neighbouring grid cells where one crop dominates in the Cropland Data Layer; not property boundaries',
+        people: 'illustrative: the cropland map knows crops, not owners',
+      },
+    };
+  }
+
+  async regionMatches(): Promise<import('./proxy.js').RegionMatches> {
+    const v = this.regionView();
+    return { status: v.status, reason: v.reason, you: v.you, matches: v.matches, unserved: v.unserved, method: v.method, sources: v.region?.sources, year: v.region?.year };
+  }
+
+  /** Pull the camera up over the region (and, optionally, glide to one field). Same animation as the manual control. */
+  showRegion(farm?: string): void {
+    this.bus.emitEvent({ type: 'ui_command', view: 'region', ...(farm ? { farm } : {}), t: Date.now(), mode: this.mode });
+  }
   setOnboarded(done: boolean): void { this.config = { ...this.config, onboarded: done }; this.emitConfig(); }
   setOverrides(o: Overrides): void { this.overrides = o; this.bus.emitEvent({ type: 'overrides', overrides: o, mode: this.mode }); }
 

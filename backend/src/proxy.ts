@@ -23,6 +23,21 @@ export interface McpBackend {
     guard?: PourGuardKind; softKind?: SoftGuardKind; holdMsUsed?: number; holdMsClamped?: boolean;
   }>;
   pourStatus(): Promise<PourActuatorStatus>;
+  /** The land around the plot and the fields that complement it. */
+  regionMatches(): Promise<RegionMatches>;
+  /** Pull the web app's camera up over the region; optionally glide to one field. */
+  showRegion(farm?: string): void;
+}
+
+export interface RegionMatches {
+  status: 'no_place' | 'loading' | 'ready' | 'unavailable';
+  reason: string | null;
+  you: { measured: boolean; drainageClass: string | null; label: string | null; ph: number | null };
+  matches: import('./region/match.js').Match[];
+  unserved: { id: string; name: string; score: number }[];
+  method: Record<string, unknown>;
+  sources?: { name: string; what: string; url: string }[];
+  year?: number;
 }
 
 export class HttpBackend implements McpBackend {
@@ -93,6 +108,12 @@ export class HttpBackend implements McpBackend {
   async pourStatus(): Promise<PourActuatorStatus> {
     const j = await this.api('/api/pour/status');
     return j.actuator;
+  }
+  async regionMatches(): Promise<RegionMatches> {
+    return this.api('/api/region/matches');
+  }
+  showRegion(farm?: string): void {
+    void this.api('/api/region/show', { method: 'POST', body: JSON.stringify(farm ? { farm } : {}) });
   }
 
   private async api(path: string, init?: RequestInit): Promise<any> {

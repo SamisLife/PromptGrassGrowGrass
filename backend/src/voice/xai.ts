@@ -56,18 +56,24 @@ export const VOICE_FUNCTION_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    type: 'function', name: 'find_complementary_farms',
+    description: 'Who nearby should the user partner with? Neighbouring farms whose soil complements this plot, with what each side can grow that the other cannot. Zooms the app out over the region. Farm and people names are illustrative, not real. Pass farm (a farm_id) for one farm plus a first-message draft.',
+    parameters: { type: 'object', properties: { limit: { type: 'number' }, farm: { type: 'string' } }, additionalProperties: false },
+  },
   { type: 'function', name: 'get_pour_status', description: 'Whether the pour board is connected and what it is doing.', parameters: emptyObject },
   {
     type: 'function', name: 'navigate',
-    description: 'Move the web app. All fields optional; send only what should change. view: field|pour|history|network. drawer: soil|plant|when|water|diagnose|none. zone: A|B. lens: natural|moisture|temperature. crop: id from score_crops.',
+    description: 'Move the web app. All fields optional; send only what should change. view: field|pour|history|network|region (region = zoom out over the neighbouring farms). drawer: soil|plant|when|water|diagnose|none. zone: A|B. lens: natural|moisture|temperature. crop: id from score_crops. farm: a farm_id from find_complementary_farms.',
     parameters: {
       type: 'object',
       properties: {
-        view: { type: 'string', enum: ['field', 'pour', 'history', 'network'] },
+        view: { type: 'string', enum: ['field', 'pour', 'history', 'network', 'region'] },
         drawer: { type: 'string', enum: ['soil', 'plant', 'when', 'water', 'diagnose', 'none'] },
         zone: { type: 'string', enum: ['A', 'B'] },
         lens: { type: 'string', enum: ['natural', 'moisture', 'temperature'] },
         crop: { type: 'string' },
+        farm: { type: 'string' },
       },
       additionalProperties: false,
     },

@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { DEMO_PLACE } from './region/demo.js';
 import { localhostHostValidation, toNodeHandler } from '@modelcontextprotocol/node';
 import type { SoilApp } from './app.js';
 import { env } from './env.js';
@@ -139,6 +140,11 @@ export function listenHttp(app: SoilApp): Promise<import('node:http').Server> {
         app.clearSoilProfile();
         return json(res, 200, wrap(app, { profile: null }));
       }
+      // The land around the plot (USDA cropland map + soil survey) and who in it complements this plot.
+      if (path === '/api/region' && method === 'GET') return json(res, 200, wrap(app, app.regionView()));
+      if (path === '/api/region/matches' && method === 'GET') { return json(res, 200, wrap(app, { ...(await app.regionMatches()) })); }
+      if (path === '/api/region/show' && method === 'POST') { const body = await readJson(req); app.showRegion(typeof body.farm === 'string' ? body.farm : undefined); return json(res, 200, wrap(app, { ok: true })); }
+      if (path === '/api/region/demo-place' && method === 'GET') return json(res, 200, wrap(app, { place: DEMO_PLACE }));
       if (path === '/api/forecast') return json(res, 200, wrap(app, { forecast: await app.forecast() }));
       if (path === '/api/frost-dates') return json(res, 200, wrap(app, { frost: await app.frostDates() }));
       if (path === '/api/notes' && method === 'GET') return json(res, 200, wrap(app, { notes: app.notes }));

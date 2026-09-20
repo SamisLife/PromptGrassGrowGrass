@@ -233,7 +233,8 @@ export interface BoardConfig {
 /** Real hardware only. The simulator was removed on 2026-09-20. */
 export type Mode = 'board';
 
-export type UiView = 'field' | 'pour' | 'history' | 'network';
+/** `region` is not a page: it is the field view with the camera pulled up over the surrounding land. */
+export type UiView = 'field' | 'pour' | 'history' | 'network' | 'region';
 export type UiDrawer = 'soil' | 'plant' | 'when' | 'water' | 'diagnose' | 'none';
 export type UiLens = 'natural' | 'moisture' | 'temperature';
 
@@ -244,6 +245,8 @@ export interface UiCommand {
   zone?: ZoneId;
   lens?: UiLens;
   crop?: string;
+  /** with view `region`: glide to this neighbouring field and open its card */
+  farm?: string;
 }
 
 export type StreamEvent =
@@ -254,7 +257,9 @@ export type StreamEvent =
   | { type: 'notes'; notes: Note[]; mode: Mode }
   | { type: 'overrides'; overrides: Overrides; mode: Mode }
   | { type: 'agent_call'; tool: string; zones: ZoneId[]; summary: string; t: number; id: number; mode: Mode }
-  | { type: 'ui_command'; view?: UiView; drawer?: UiDrawer; zone?: ZoneId; lens?: UiLens; crop?: string; t: number; mode: Mode };
+  | { type: 'ui_command'; view?: UiView; drawer?: UiDrawer; zone?: ZoneId; lens?: UiLens; crop?: string; farm?: string; t: number; mode: Mode }
+  /** the land around the plot changed state (loading, ready, unavailable): fetch /api/region again */
+  | { type: 'region'; status: 'no_place' | 'loading' | 'ready' | 'unavailable'; mode: Mode };
 
 export type PourCaller = 'http' | 'legacy' | 'mcp-http' | 'mcp-stdio' | 'voice';
 export type PourResult = 'started' | 'busy' | 'cooldown' | 'offline' | 'no_reply' | 'refused' | 'unauthorized';

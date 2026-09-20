@@ -126,6 +126,17 @@ export function createSoilMcp(app: McpBackend, caller: PourCaller): McpServer {
     async () => tool(app, caller, 'get_pour_status'),
   );
 
+  server.registerTool(
+    'find_complementary_farms',
+    {
+      title: 'Find complementary farms nearby',
+      description: "Who near this plot should the user be talking to? Returns neighbouring fields whose soil complements this one: what they grow (USDA Cropland Data Layer), what this plot could grow that they cannot and the reverse (the app's crop rules run on both soils; theirs from the USDA SSURGO survey), distance, and a one-sentence pairing. Also makes the web app zoom out over the region. Farm and contact names are illustrative, not real people: say so. Pass farm to get a first-message draft for one match.",
+      inputSchema: z.object({ limit: z.number().optional().describe('How many matches to return (default 5, max 8).'), farm: z.string().optional().describe('A farm_id from a previous call: return only that farm, with a first-message draft, and glide the map to it.') }),
+      annotations: { ...ro, openWorldHint: true },
+    },
+    async ({ limit, farm }) => tool(app, caller, 'find_complementary_farms', { limit, farm }),
+  );
+
   server.registerPrompt(
     'diagnose_field',
     { title: 'Diagnose the plot', description: 'Walk through the four questions (soil, what to plant, when, water) using the live tools, then act only if the user asks.' },

@@ -81,6 +81,9 @@ class FakeApp implements McpBackend {
     return { result: 'started' as const, ok: true, next: 're-read A' };
   }
   async pourStatus() { return { connected: true, phase: 'idle' as const }; }
+  shownRegion: (string | undefined)[] = [];
+  async regionMatches() { return { status: 'no_place' as const, reason: null, you: { measured: false, drainageClass: null, label: null, ph: null }, matches: [], unserved: [], method: {} }; }
+  showRegion(farm?: string) { this.shownRegion.push(farm); }
 }
 
 function runtimeOf(app: FakeApp, confirm?: ConfirmStore) {
