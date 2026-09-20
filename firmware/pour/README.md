@@ -3,7 +3,7 @@
 Tips a water bottle with a servo, holds, and returns to rest. It pours only when told to.
 
 ```
-idle ──pour──▶ tipping ──▶ holding ──▶ returning ──▶ idle (4 s cooldown)
+idle ──pour──▶ tipping ──▶ holding ──▶ returning ──▶ idle
 ```
 
 ## Wiring
@@ -45,7 +45,7 @@ For code on the board's Linux side (`Bridge.call("pour", 0)` in Python).
 | `pour_set_rest_here()`, `pour_set_rest_deg(d)`, `pour_set_pour_deg(d)` | the new value, or `-1` while pouring |
 | notification `pour_event(name, value)` | `tipping`, `holding`, `returning`, `done`, `rest_saved` |
 
-Limits enforced on the board, whoever calls: one pour at a time, a 4 s cooldown, hold time clamped to 200-5000 ms, angles clamped, and the bottle always returns to rest. The repeat mode is console-only. Asking a human "are you sure?" is the caller's job.
+Limits enforced on the board, whoever calls: one pour at a time, hold time clamped to 200-5000 ms, angles clamped, and the bottle always returns to rest. The repeat mode is console-only. Asking a human "are you sure?" is the caller's job.
 
 ## Self-test at boot
 
@@ -53,4 +53,4 @@ Set `SELFTEST_AT_BOOT_S` to, say, `20` and the board pours repeatedly for that l
 
 ## Verified
 
-On an UNO Q with an MG996R and a half-full water bottle: repeated pour cycles, refusal while busy and during cooldown, and a signal width error of +1 to +3 µs over thousands of pulses, idle and while moving.
+On an UNO Q with an MG996R and a half-full water bottle: repeated pour cycles, refusal while busy, and a signal width error of +1 to +3 µs over thousands of pulses, idle and while moving.

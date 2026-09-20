@@ -13,7 +13,7 @@
 //   servo brown -> that supply's minus AND a GND pin on the board (common ground).
 //
 // SAFETY, enforced here for every caller:
-//   one pour at a time - a cooldown between pours - hold time and angles clamped -
+//   one pour at a time - hold time and angles clamped -
 //   the bottle always returns to rest.
 //
 // A hobby servo has NO position feedback. "Current angle" always means "the last angle
@@ -43,7 +43,7 @@ int holdMs  = 1500;           // time held at the pour angle
 // ------------------------------------------------------------------ hard limits
 const int  DEG_MIN = 5, DEG_MAX = 180;
 const int  HOLD_MS_MIN = 200, HOLD_MS_MAX = 5000;
-const long COOLDOWN_MS = 4000;               // between the end of one pour and the next start
+const long COOLDOWN_MS = 0;                  // no pause between pours (it was 4000). One pour at a time still holds: BUSY while moving.
 const int  TIP_MS_PER_DEG    = 22;           // tipping: slow enough not to slosh
 const int  RETURN_MS_PER_DEG = 16;           // returning: lifting a full bottle fast is the biggest current peak
 const int  REPEAT_MAX_S = 60;
