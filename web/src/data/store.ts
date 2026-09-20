@@ -232,26 +232,7 @@ export function startBoard(): void {
       case 'notes': useApp.setState({ notes: e.notes }); break;
       case 'overrides': useApp.setState({ overrides: e.overrides }); void useApp.getState().refreshAnswers(); break;
       case 'agent_call': useApp.getState().recordAgentCall(e.tool, e.zones, e.summary); break;
-      case 'ui_command': {
-        // Spoken navigation. Every field is optional; ignore anything we do not know.
-        const st = useApp.getState();
-        if (st.stage !== 'live') useApp.setState({ stage: 'live', draft: null });
-        if (e.zone && st.config?.zones.some((z) => z.id === e.zone)) st.selectZone(e.zone);
-        if (e.view === 'region' || e.farm) {
-          // the agent asked about the neighbours: same zoom-out as the manual control, then glide to the farm
-          if (!useApp.getState().regionOn) st.goRegion(true); else void st.loadRegion();
-          if (e.farm) setTimeout(() => useApp.getState().selectFarm(e.farm!), useApp.getState().regionData ? 900 : 1800);
-          break;
-        }
-        if (e.view && ['field', 'pour', 'history', 'network'].includes(e.view) && e.view !== useApp.getState().view) st.setView(e.view as View);
-        if (e.lens && ['natural', 'moisture', 'temperature'].includes(e.lens)) st.setLens(e.lens as Lens);
-        if (e.crop) { st.selectCrop(e.crop); if (!e.drawer) useApp.setState({ view: 'field', drawer: 'plant' }); }
-        if (e.drawer) {
-          const drawer = e.drawer === 'none' ? null : (['soil', 'plant', 'when', 'water', 'diagnose'].includes(e.drawer) ? (e.drawer as Drawer) : undefined);
-          if (drawer !== undefined) { if (drawer && useApp.getState().view !== 'field') st.setView('field'); useApp.setState({ drawer }); if (drawer === 'diagnose') void st.runDiagnose(); }
-        }
-        break;
-      }
+      case 'ui_command': applyUiCommand(e); break;
       case 'link': {
         const was = useApp.getState().backendOnline;
         useApp.setState({ backendOnline: e.online, ...(e.online ? {} : { live: {} }) });   // offline: no stale readings on screen
@@ -263,6 +244,29 @@ export function startBoard(): void {
   setInterval(() => { if (useApp.getState().stage === 'live') void useApp.getState().refreshAnswers(); }, 4000);
 }
 
+
+/** The navigation vocabulary shared by the voice assistant (SSE `ui_command`) and the page's own agent tools. */
+export interface UiCommand { view?: string; drawer?: string; zone?: string; lens?: string; crop?: string; farm?: string }
+
+/** Move the app. Every field is optional; anything we do not know is ignored. */
+export function applyUiCommand(e: UiCommand): void {
+  const st = useApp.getState();
+  if (st.stage !== 'live') useApp.setState({ stage: 'live', draft: null });
+  if (e.zone && st.config?.zones.some((z) => z.id === e.zone)) st.selectZone(e.zone);
+  if (e.view === 'region' || e.farm) {
+    // the agent asked about the neighbours: same zoom-out as the manual control, then glide to the farm
+    if (!useApp.getState().regionOn) st.goRegion(true); else void st.loadRegion();
+    if (e.farm) setTimeout(() => useApp.getState().selectFarm(e.farm!), useApp.getState().regionData ? 900 : 1800);
+    return;
+  }
+  if (e.view && ['field', 'pour', 'history', 'network'].includes(e.view) && (e.view !== useApp.getState().view || useApp.getState().regionOn)) st.setView(e.view as View);
+  if (e.lens && ['natural', 'moisture', 'temperature'].includes(e.lens)) st.setLens(e.lens as Lens);
+  if (e.crop) { st.selectCrop(e.crop); if (!e.drawer) useApp.setState({ view: 'field', drawer: 'plant' }); }
+  if (e.drawer) {
+    const drawer = e.drawer === 'none' ? null : (['soil', 'plant', 'when', 'water', 'diagnose'].includes(e.drawer) ? (e.drawer as Drawer) : undefined);
+    if (drawer !== undefined) { if (drawer && (useApp.getState().view !== 'field' || useApp.getState().regionOn)) st.setView('field'); useApp.setState({ drawer }); if (drawer === 'diagnose') void st.runDiagnose(); }
+  }
+}
 
 /** Value of a history series at time t (linear interpolation). */
 export function sampleSeries(series: HistorySeries | undefined, t: number): { moisturePct: number | null; tempC: number | null } {

@@ -161,7 +161,7 @@ export function FieldCanvas() {
                     <span title="Soil temperature"><IconThermo /><i>{l?.tempOnline && l.tempC != null ? `${l.tempC.toFixed(1)}°C` : 'offline'}</i></span>
                   </span>
                 )}
-                {lastCall && <span className="zone-tag-agent">{lastCall.tool}</span>}
+                {lastCall && <span className="zone-tag-agent">{lastCall.summary || lastCall.tool}</span>}
               </button>
             </div>
           );

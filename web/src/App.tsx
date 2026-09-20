@@ -4,7 +4,8 @@ import { useApp } from './data/store';
 import { FieldCanvas } from './scene/FieldCanvas';
 import { DemoPanel } from './ui/DemoPanel';
 import { Drawer } from './ui/Drawers';
-import { AgentFeed, AnswersBar, HistoryBar, PourPanel, Rail, TopBar } from './ui/Live';
+import { AgentPresence } from './ui/AgentPresence';
+import { AnswersBar, HistoryBar, PourPanel, Rail, TopBar } from './ui/Live';
 import { NetworkPanel } from './ui/Network';
 import { RegionOverlay } from './ui/Region';
 import { BuildPanel, CalibratePanel, LocationPanel, Stepper, Welcome } from './ui/Onboarding';
@@ -62,7 +63,7 @@ export function App() {
           {stage === 'calibrate' && <CalibratePanel />}
           {stage === 'live' && (
             <>
-              <AgentFeed />
+              <AgentPresence />
               <Rail />
               {view === 'field' && !regionOn && <AnswersBar />}
               <RegionOverlay />

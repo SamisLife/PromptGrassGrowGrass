@@ -568,3 +568,42 @@ button:focus-visible, textarea:focus-visible, select:focus-visible {
   .app:has(.farm-card) .region-legend ul { display: none; }
   .history-empty { grid-template-columns: 1fr; gap: 12px; }
 }
+
+/* ------------------------------------------------------------------ the AI at work (WebMCP, voice, MCP) */
+/* A quiet violet frame while the AI is acting: the person always knows it is not them. */
+.app::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 30; border-radius: 0; box-shadow: inset 0 0 0 0 rgba(165,150,255,0), inset 0 0 0 rgba(165,150,255,0); transition: box-shadow .5s ease; }
+.app.is-agent::after { box-shadow: inset 0 0 0 1.5px rgba(165,150,255,.55), inset 0 0 90px rgba(165,150,255,.13); }
+
+.agent-presence { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); z-index: 9; display: grid; justify-items: center; gap: 8px; width: max-content; max-width: calc(100% - 620px); pointer-events: none; }
+.agent-presence > * { pointer-events: auto; }
+.agent-presence .agent-feed { position: static; transform: none; max-width: 100%; padding: 4px 6px 4px 4px; gap: 4px; }
+.agent-head { background: none; border: 0; padding: 3px 10px; border-radius: 99px; cursor: pointer; font: inherit; font-weight: 600; font-size: 12.5px; color: var(--agent); min-width: 0; }
+.agent-head:hover { background: rgba(165,150,255,.14); }
+.agent-say { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-head em { font-style: normal; font-weight: 500; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: rgba(255,255,255,.1); color: var(--text-dim); }
+.agent-head small { font: 500 10.5px var(--font-mono); color: var(--agent); opacity: .8; }
+.agent-feed.is-failed .agent-head em { background: rgba(255,113,97,.18); color: var(--danger); }
+.agent-dots { display: inline-flex; gap: 3px; } .agent-dots b { width: 4px; height: 4px; border-radius: 50%; background: var(--agent); animation: agent-dot 1s infinite ease-in-out; } .agent-dots b:nth-child(2) { animation-delay: .15s; } .agent-dots b:nth-child(3) { animation-delay: .3s; }
+@keyframes agent-dot { 0%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+.agent-undo { height: 24px; padding: 0 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; color: var(--agent); background: rgba(165,150,255,.16); border: 1px solid rgba(165,150,255,.35); transition: .2s; white-space: nowrap; } .agent-undo:hover { background: rgba(165,150,255,.3); color: var(--text); }
+
+.agent-trail { width: 380px; max-width: calc(100vw - 32px); padding: 14px 16px; display: grid; gap: 10px; border-color: rgba(165,150,255,.35); animation: content-in .25s both; }
+.agent-trail header { display: flex; justify-content: space-between; align-items: center; } .agent-trail .eyebrow { margin: 0; color: var(--agent); }
+.agent-trail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 260px; overflow-y: auto; scrollbar-width: thin; }
+.agent-trail li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 9px; font-size: 12.5px; } .agent-trail li:first-child { background: rgba(165,150,255,.1); }
+.agent-trail li b { font-weight: 500; } .agent-trail li em { font-style: normal; color: var(--text-faint); margin-left: 7px; font-size: 11.5px; } .agent-trail li small { font: 10.5px var(--font-mono); color: var(--text-faint); white-space: nowrap; }
+.agent-trail li.is-failed b { color: var(--danger); } .agent-trail li.is-offered b, .agent-trail li.is-declined b { color: var(--text-dim); }
+.agent-follow { display: flex; grid-auto-flow: column; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); cursor: pointer; } .agent-follow input { width: 15px; height: 15px; accent-color: var(--agent); }
+
+.agent-offer { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-radius: 99px; background: rgba(28,22,58,.92); border: 1px solid rgba(165,150,255,.5); backdrop-filter: blur(16px); font-size: 12.5px; animation: content-in .25s both; box-shadow: 0 10px 30px -10px rgba(0,0,0,.7); }
+.agent-offer span { display: flex; align-items: center; gap: 6px; color: var(--text-dim); white-space: nowrap; } .agent-offer svg { color: var(--agent); flex: none; } .agent-offer b { color: var(--text); font-weight: 600; }
+.agent-offer .btn { height: 28px; padding: 0 12px; font-size: 12px; } .btn-agent-solid { background: var(--agent); color: #15102e; font-weight: 600; }
+
+.agent-ask { width: 420px; max-width: calc(100vw - 32px); padding: 16px 18px; display: grid; gap: 8px; border-color: rgba(255,180,84,.55); box-shadow: 0 0 0 1px rgba(255,180,84,.2), 0 30px 70px -20px rgba(0,0,0,.85); animation: content-in .25s both; }
+.agent-ask .eyebrow { color: var(--agent); margin: 0; } .agent-ask h3 { font-size: 20px; } .agent-ask p { margin: 0; color: var(--text); font-size: 13.5px; line-height: 1.5; }
+.agent-ask .row { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.btn-warn { background: var(--warm); color: #2a1803; font-weight: 600; box-shadow: 0 8px 26px -10px var(--warm); }
+.pill-agent.is-active { background: rgba(165,150,255,.16); border-color: rgba(165,150,255,.6); color: #d9d3ff; } .pill-agent.is-active svg { animation: agent-dot 1.4s infinite ease-in-out; }
+
+@media (max-width: 1100px) { .agent-presence { max-width: calc(100% - 32px); top: 60px; } }
+@media (prefers-reduced-motion: reduce) { .agent-dots b, .pill-agent.is-active svg { animation: none; opacity: .8; } .app::after { transition: none; } }

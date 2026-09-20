@@ -61,3 +61,33 @@ export const POUR_RESULT_TEXT: Record<PourResult, string> = {
   offline: 'The backend is not running (cd backend && npm start)',
   no_reply: 'The board did not answer',
 };
+
+// ---------------------------------------------------------------- the guarded route (agents)
+export interface GuardedPour {
+  ok: boolean;
+  result: PourResult | 'refused' | 'unauthorized';
+  reason?: string;
+  /** soft = the person may override it (zone A already wet, too many pours recently); hard = never */
+  guard?: 'soft' | 'hard';
+  softKind?: 'wet' | 'window';
+  reading?: { moisturePct: number | null };
+  holdMsUsed?: number;
+}
+
+/**
+ * POST /api/pour: the backend checks that the board is alive and listening, applies the firmware
+ * limits and the guards, and writes the pour log. `force` overrides SOFT guards only, and the
+ * page sends it only after the person has pressed the confirm button (agent/agentStore.ts).
+ */
+export async function requestGuardedPour(opts: { holdMs?: number; force?: boolean }, signal?: AbortSignal): Promise<GuardedPour> {
+  try {
+    const res = await fetch(`${BASE}/api/pour`, { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(opts.holdMs ? { holdMs: opts.holdMs } : {}), ...(opts.force ? { force: true } : {}) }) });
+    return (await res.json()) as GuardedPour;
+  } catch {
+    return { ok: false, result: 'offline', reason: 'The backend is not running, so nothing can be poured.', guard: 'hard' };
+  }
+}
+
+export async function guardedPourStatus(): Promise<{ actuator: PourActuatorStatus; detector?: unknown } | null> {
+  try { return (await (await fetch(`${BASE}/api/pour/status`, { signal: AbortSignal.timeout(4000) })).json()) as { actuator: PourActuatorStatus }; } catch { return null; }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { webmcpStatus } from '../agent/webmcp';
+import { AgentBadge } from './AgentPresence';
 import { brand } from '../brand';
 import { useApp } from '../data/store';
 import type { Lens, View } from '../data/store';
@@ -367,30 +367,5 @@ export function HistoryBar() {
           onChange={(e) => setReplay({ active: true, playing: false, t: +e.target.value })} aria-label="Replay time" />
       </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------- agent feed
-export function AgentFeed() {
-  const calls = useApp((s) => s.agentCalls);
-  const [, tick] = useState(0);
-  useEffect(() => { const id = setInterval(() => tick((n) => n + 1), 1000); return () => clearInterval(id); }, []);
-  const recent = calls.filter((c) => Date.now() - c.t < 9000).slice(0, 4);
-  if (!recent.length) return null;
-  return (
-    <div className="agent-feed">
-      <span className="agent-head"><IconSpark /> Agent is reading your field</span>
-      {recent.map((c) => <span key={c.id} className="agent-chip"><code>{c.tool}</code>{c.zones.length > 0 && <em>{c.zones.join(' ')}</em>}</span>)}
-    </div>
-  );
-}
-
-export function AgentBadge() {
-  const [status, setStatus] = useState(webmcpStatus);
-  useEffect(() => { const id = setInterval(() => setStatus({ ...webmcpStatus }), 1500); return () => clearInterval(id); }, []);
-  return (
-    <span className={`pill ${status.available ? 'pill-agent' : ''}`} title={status.reason}>
-      <IconSpark />{status.available ? `Agent tools ready · ${status.registered}` : 'Agent tools off'}
-    </span>
   );
 }
