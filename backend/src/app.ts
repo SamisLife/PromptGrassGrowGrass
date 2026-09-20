@@ -9,13 +9,14 @@ import { HistoryStore } from './history.js';
 import { isImplausibleRaw } from './parse.js';
 import { isCalibrated, mapRaw, swingOk } from './percent.js';
 import { ensureDataDir, persist } from './persist.js';
+import { judgePour, type PourOutcome } from './plain.js';
 import { PourDetector } from './pourDetector.js';
 import { defaultGuardConfig, PourGuards, type PourRequestLog } from './pourGuards.js';
 import { plantingWindow } from './season.js';
 import type {
   AgentCall, BoardConfig, Connectivity, CropScore, DetectedBoard, Diagnosis, Forecast, FrostDates, HistorySeries,
-  Mode, Note, Overrides, Place, PlantingWindow, Plot, PourActuatorStatus, PourCaller, PourResult, ProbeId, SoilProfile,
-  Zone, ZoneId, ZoneLive, ZoneReading, HistoryPoint } from './types.js';
+  Mode, Note, Overrides, Place, PlantingWindow, Plot, PourActuatorStatus, PourCaller, PourGuardKind, PourResult, ProbeId,
+  SoftGuardKind, SoilProfile, Zone, ZoneId, ZoneLive, ZoneReading, HistoryPoint } from './types.js';
 import { cannedDays, fetchForecast, fetchFrostDates, searchPlaces, summarizeForecast } from './weather.js';
 
 const emptyLive = (t = Date.now()): ZoneLive => ({
@@ -61,6 +62,12 @@ export class SoilApp {
 
   async start(): Promise<void> {
     ensureDataDir();
+    if (this.cfg.hardwareOff) {
+      this.missing = ['pour board (servo / water bottle)', 'sensor board A', 'sensor board B'];
+      console.log(new Date().toLocaleTimeString(), 'HARDWARE=off: not opening consoles. Every probe stays offline; nothing is simulated.');
+      this.tickOffline();
+      return;
+    }
     this.hardware = new HardwareManager({
       onSensor: (s) => this.onHardwareSensor(s),
       onActuator: (st) => { this.actuator = st; },
@@ -77,6 +84,8 @@ export class SoilApp {
   }
 
   private lastMissingNote = '';
+  /** zone A just before the most recent accepted pour */
+  private lastPour: { t: number; rawBefore: number | null; pctBefore: number | null } | null = null;
   private onBoards(boards: DetectedBoard[], missing: string[]): void {
     this.boardsList = boards;
     this.missing = missing;
@@ -346,8 +355,11 @@ export class SoilApp {
 
   async pourWater(opts: { holdMs?: number; force?: boolean; caller: PourCaller }): Promise<{
     result: PourResult; ok: boolean; reason?: string; reading?: ZoneLive; next?: string;
+    guard?: PourGuardKind; softKind?: SoftGuardKind; holdMsUsed?: number; holdMsClamped?: boolean;
   }> {
-    const holdMs = opts.holdMs && opts.holdMs > 0 ? Math.max(200, Math.min(5000, Math.round(opts.holdMs))) : undefined;
+    const rawHold = opts.holdMs && opts.holdMs > 0 ? Math.round(opts.holdMs) : undefined;
+    const holdMs = rawHold != null ? Math.max(200, Math.min(5000, rawHold)) : undefined;
+    const holdMsClamped = rawHold != null && holdMs !== rawHold;
     const zoneA = this.config.zones.find((z) => z.probe === 'A' || z.id === 'A');
     const liveA = zoneA ? this.liveOf(zoneA.id) : null;
     const boardOnline = this.actuator.connected;
@@ -359,14 +371,45 @@ export class SoilApp {
     };
     if (!gate.ok) {
       log(gate.result, gate.reason);
-      return { result: gate.result, ok: false, reason: gate.reason, reading: gate.reading };
+      return { result: gate.result, ok: false, reason: gate.reason, reading: gate.reading, guard: gate.guard, softKind: gate.softKind };
+    }
+    if (!this.hardware) {
+      const reason = this.cfg.hardwareOff
+        ? 'HARDWARE=off: no pour board is open. Nothing was sent.'
+        : 'No pour board is connected.';
+      log('offline', reason);
+      return { result: 'offline', ok: false, reason, guard: 'hard' };
     }
     if (this.detector.state.phase === 'idle') this.armPour();
-    const r = await this.hardware!.requestPour(holdMs);
-    if (r === 'started') this.guards.recordAccepted();
+    const r = await this.hardware.requestPour(holdMs);
+    if (r === 'started') {
+      this.guards.recordAccepted();
+      this.lastPour = { t: Date.now(), rawBefore: liveA?.moistureOnline ? liveA.moistureRaw : null, pctBefore: liveA?.moistureOnline ? liveA.moisturePct : null };
+    }
     log(r);
     const next = r === 'started' ? 'Read zone A again in 10 to 20 seconds to confirm the water arrived. The servo has no position feedback — falling moisture at A is the only evidence.' : undefined;
-    return { result: r, ok: r === 'started', next };
+    const hardReason =
+      r === 'busy' ? 'The pour board is still returning from the last pour. Wait a few seconds and try again. This cannot be overridden.'
+      : r === 'cooldown' ? `The pour board is in cooldown (${this.actuator.cooldownMsLeft ?? 4000} ms left). Wait, then try again. This cannot be overridden.`
+      : r === 'offline' ? 'The pour board is not connected or did not answer a status ping. This cannot be overridden.'
+      : r === 'no_reply' ? 'The pour board did not acknowledge the command. It may still be booting. This cannot be overridden.'
+      : undefined;
+    return {
+      result: r,
+      ok: r === 'started',
+      next,
+      reason: hardReason,
+      guard: r === 'started' ? undefined : 'hard',
+      holdMsUsed: holdMs,
+      holdMsClamped,
+    };
+  }
+
+  /** Did the last pour reach the zone A sensor? null when there was no pour in the last 5 minutes. */
+  pourOutcome(now = Date.now()): PourOutcome | null {
+    if (!this.lastPour || now - this.lastPour.t > 5 * 60_000) return null;
+    const zoneA = this.config.zones.find((z) => z.probe === 'A' || z.id === 'A');
+    return judgePour({ pouredAt: this.lastPour.t, now, rawBefore: this.lastPour.rawBefore, pctBefore: this.lastPour.pctBefore, live: zoneA ? this.liveOf(zoneA.id) : null });
   }
 
   async pourStatus(): Promise<PourActuatorStatus> {

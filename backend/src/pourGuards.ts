@@ -1,5 +1,5 @@
 import { MOISTURE } from './advice.js';
-import type { PourCaller, PourResult, ZoneLive } from './types.js';
+import type { PourCaller, PourGuardKind, PourResult, SoftGuardKind, ZoneLive } from './types.js';
 
 export interface PourGuardConfig {
   maxPerWindow: number;
@@ -30,10 +30,10 @@ export class PourGuards {
     zoneA: ZoneLive | null;
     force: boolean;
     boardOnline: boolean;
-  }): { ok: true } | { ok: false; result: PourResult; reason: string; reading?: ZoneLive } {
+  }): { ok: true } | { ok: false; result: PourResult; reason: string; reading?: ZoneLive; guard: PourGuardKind; softKind?: SoftGuardKind } {
     const now = opts.now ?? Date.now();
     if (!opts.boardOnline) {
-      return { ok: false, result: 'offline', reason: 'No board running the pour firmware is connected.' };
+      return { ok: false, result: 'offline', reason: 'No board running the pour firmware is connected.', guard: 'hard' };
     }
     this.accepted = this.accepted.filter((t) => now - t < this.cfg.windowMs);
     if (this.accepted.length >= this.cfg.maxPerWindow) {
@@ -43,6 +43,8 @@ export class PourGuards {
         ok: false,
         result: 'refused',
         reason: `Server limit: ${this.cfg.maxPerWindow} pours in ${Math.round(this.cfg.windowMs / 60000)} minutes. Try again in about ${waitS} s.`,
+        guard: 'soft',
+        softKind: 'window',
       };
     }
     const live = opts.zoneA;
@@ -52,6 +54,8 @@ export class PourGuards {
         result: 'refused',
         reason: `Zone A already reads wet (${Math.round(live.moisturePct)}% relative moisture, threshold ${this.cfg.wetPct}%). Pass force=true to pour anyway.`,
         reading: live,
+        guard: 'soft',
+        softKind: 'wet',
       };
     }
     return { ok: true };

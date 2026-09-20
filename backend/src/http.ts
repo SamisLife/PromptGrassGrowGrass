@@ -4,6 +4,7 @@ import type { SoilApp } from './app.js';
 import { env } from './env.js';
 import { mcpHttpHandler } from './mcp.js';
 import type { PourCaller, ProbeId, Zone, ZoneId } from './types.js';
+import { attachVoice, voiceStatus } from './voice/index.js';
 
 /**
  * A page served from THIS machine, on any port. Dev servers hop ports (5173, 5174, ...),
@@ -124,6 +125,9 @@ export function listenHttp(app: SoilApp): Promise<import('node:http').Server> {
       if (path === '/api/events' && method === 'GET') return sseApi(app, req, res);
 
       if (path === '/api/health') return json(res, 200, wrap(app, { ok: true, uptime_s: Math.round(process.uptime()), missing: app.missing }));
+      if (path === '/api/voice/status' && method === 'GET') {
+        return json(res, 200, wrap(app, { ...voiceStatus({ publicBase: cfg.publicBase }) }));
+      }
       if (path === '/api/readings') return json(res, 200, app.snapshotReadings());
       if (path === '/api/boards') return json(res, 200, wrap(app, { boards: app.snapshotReadings().boards.present, missing: app.missing }));
       if (path === '/api/agent/connect-info') return json(res, 200, wrap(app, app.connectInfo()));
@@ -228,10 +232,14 @@ export function listenHttp(app: SoilApp): Promise<import('node:http').Server> {
     }
   });
 
+  attachVoice(server, app);
+
   return new Promise((resolve, reject) => {
     server.on('error', reject);
     server.listen(cfg.port, cfg.host, () => {
+      const vs = voiceStatus({ publicBase: cfg.publicBase });
       console.log(new Date().toLocaleTimeString(), `backend on http://${cfg.host}:${cfg.port}  (MCP streamable HTTP at /mcp)`);
+      console.log(new Date().toLocaleTimeString(), vs.enabled ? 'voice: enabled (Grok realtime relay)' : `voice: disabled (${vs.reason})`);
       resolve(server);
     });
   });

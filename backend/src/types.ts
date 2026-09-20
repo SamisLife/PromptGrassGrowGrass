@@ -233,6 +233,19 @@ export interface BoardConfig {
 /** Real hardware only. The simulator was removed on 2026-09-20. */
 export type Mode = 'board';
 
+export type UiView = 'field' | 'pour' | 'history' | 'network';
+export type UiDrawer = 'soil' | 'plant' | 'when' | 'water' | 'diagnose' | 'none';
+export type UiLens = 'natural' | 'moisture' | 'temperature';
+
+/** All fields optional. Unknown values are an error the model can recover from. */
+export interface UiCommand {
+  view?: UiView;
+  drawer?: UiDrawer;
+  zone?: ZoneId;
+  lens?: UiLens;
+  crop?: string;
+}
+
 export type StreamEvent =
   | { type: 'config'; config: BoardConfig; mode: Mode }
   | { type: 'sample'; t: number; zones: Record<ZoneId, ZoneLive>; mode: Mode }
@@ -240,10 +253,13 @@ export type StreamEvent =
   | { type: 'profile'; profile: SoilProfile | null; mode: Mode }
   | { type: 'notes'; notes: Note[]; mode: Mode }
   | { type: 'overrides'; overrides: Overrides; mode: Mode }
-  | { type: 'agent_call'; tool: string; zones: ZoneId[]; summary: string; t: number; id: number; mode: Mode };
+  | { type: 'agent_call'; tool: string; zones: ZoneId[]; summary: string; t: number; id: number; mode: Mode }
+  | { type: 'ui_command'; view?: UiView; drawer?: UiDrawer; zone?: ZoneId; lens?: UiLens; crop?: string; t: number; mode: Mode };
 
-export type PourCaller = 'http' | 'legacy' | 'mcp-http' | 'mcp-stdio';
+export type PourCaller = 'http' | 'legacy' | 'mcp-http' | 'mcp-stdio' | 'voice';
 export type PourResult = 'started' | 'busy' | 'cooldown' | 'offline' | 'no_reply' | 'refused' | 'unauthorized';
+export type PourGuardKind = 'soft' | 'hard';
+export type SoftGuardKind = 'wet' | 'window';
 
 export interface PourActuatorStatus {
   connected: boolean;

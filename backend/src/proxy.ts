@@ -1,6 +1,6 @@
 import type {
   BoardConfig, CropScore, Forecast, HistorySeries, Mode, Note, PlantingWindow, PourActuatorStatus,
-  PourCaller, PourResult, SoilProfile, Zone, ZoneId, ZoneLive, ZoneReading,
+  PourCaller, PourGuardKind, PourResult, SoftGuardKind, SoilProfile, Zone, ZoneId, ZoneLive, ZoneReading,
 } from './types.js';
 
 /** What MCP tools need. SoilApp implements this; stdio may proxy it over HTTP. */
@@ -20,6 +20,7 @@ export interface McpBackend {
   readings(): Promise<unknown>;
   pourWater(opts: { holdMs?: number; force?: boolean; caller: PourCaller }): Promise<{
     result: PourResult; ok: boolean; reason?: string; reading?: ZoneLive; next?: string;
+    guard?: PourGuardKind; softKind?: SoftGuardKind; holdMsUsed?: number; holdMsClamped?: boolean;
   }>;
   pourStatus(): Promise<PourActuatorStatus>;
 }

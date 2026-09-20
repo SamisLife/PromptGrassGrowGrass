@@ -66,6 +66,8 @@ export function env() {
     pourWindowMs: num('POUR_WINDOW_MS', 10 * 60 * 1000),
     pourWetPct: num('POUR_WET_PCT', 78),
     publicBase: `http://${host === '::1' ? '[::1]' : host}:${port}`,
+    /** When true, no serial console is opened. Every probe stays offline. Never invents readings. */
+    hardwareOff: str('HARDWARE').toLowerCase() === 'off',
   };
 }
 
