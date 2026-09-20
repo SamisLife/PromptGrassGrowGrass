@@ -1,0 +1,10 @@
+=== pour firmware === build Sep 20 2026 00:46:02
+status: idle,180,180,60,1500,0,0
+[12.0s] pour: tipping
+[14.0s] pour: holding
+[15.5s] pour: returning
+[21.5s] pour: done, back at rest
+pour: accepted
+pour: BUSY (already pouring)
+pour: COOLDOWN (wait a few seconds)
+status: idle,180,180,60,1500,1,3500

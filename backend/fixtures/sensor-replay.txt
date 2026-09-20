@@ -1,0 +1,7 @@
+[362s] moisture raw=3516 (2.83 V)  T0=26.12
+[363s] moisture raw=3515 (2.83 V)  T0=ERR
+[364s] moisture raw=3515 (2.83 V)
+=== sensor_test === build Sep 20 2026 01:47:00
+[1s] moisture raw=3514 (2.83 V)  T0=25.90
+[2s] moisture raw=1102 (0.89 V)
+[3s] moisture raw=3513 (2.83 V)  T0=25.91
