@@ -1,6 +1,6 @@
-# Firmware requests
+# Firmware wish list
 
-Built against `PromptGrassGrowGrass` `sensor_test` and `pour` as they are today. These would make the laptop owner more reliable. None of them are required for the demo to function.
+Changes to the [`sensor_test`](../firmware/sensor_test) and [`pour`](../firmware/pour) sketches that would make the backend more reliable. None is required: the backend works with the sketches as they are. They are good first contributions for someone with a board.
 
 ## 1. Sample faster while a pour is running (high value)
 

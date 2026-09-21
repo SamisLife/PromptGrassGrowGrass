@@ -1,6 +1,6 @@
 /**
  * Shapes that cross the hardware boundary. Kept field-for-field compatible
- * with web/src/data/types.ts. Differences are listed in COMPAT.md.
+ * with web/src/data/types.ts. The wire format is documented in API.md.
  */
 
 export type ZoneId = string;

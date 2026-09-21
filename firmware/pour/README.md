@@ -40,7 +40,7 @@ For code on the board's Linux side (`Bridge.call("pour", 0)` in Python).
 
 | Call | Returns |
 | --- | --- |
-| `pour(hold_ms)`, `<= 0` = default | `1` started, `-1` busy, `-2` cooling down. Returns at once |
+| `pour(hold_ms)`, `<= 0` = default | `1` started, `-1` busy, `-2` cooling down (only when `COOLDOWN_MS` is set above 0; the default is 0). Returns at once |
 | `pour_status()` | the status string above |
 | `pour_set_rest_here()`, `pour_set_rest_deg(d)`, `pour_set_pour_deg(d)` | the new value, or `-1` while pouring |
 | notification `pour_event(name, value)` | `tipping`, `holding`, `returning`, `done`, `rest_saved` |
